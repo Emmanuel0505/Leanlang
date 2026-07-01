@@ -1,0 +1,7 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "validation_blueprint": "./app/graph/studio.py:graph"
+  },
+  "env": ".env"
+}

@@ -1,0 +1,23 @@
+[
+  {
+    "id": "science-kits",
+    "name": "Kits de ciencia por suscripcion",
+    "raw_idea": "Servicio de suscripcion mensual que envia kits de proyectos de ciencias seleccionados segun el nivel educativo de los hijos, para padres millennials con poco tiempo.",
+    "constraints": {"budget_level": "low", "time_horizon": "weeks", "stage": "discovery"},
+    "reference_notes": "Riesgo principal de deseabilidad (padres pagaran?) y viabilidad (costo de envio < ingreso)."
+  },
+  {
+    "id": "b2b-irrigation",
+    "name": "Riego inteligente inalambrico (B2B)",
+    "raw_idea": "Sistema de riego inalambrico para paisajistas profesionales que ahorra tiempo y agua mediante sensores y una app de control.",
+    "constraints": {"budget_level": "medium", "time_horizon": "weeks", "stage": "discovery"},
+    "reference_notes": "B2B: usar entrevistas a socios, carta de intencion; factibilidad tecnica relevante."
+  },
+  {
+    "id": "social-scheduler",
+    "name": "Programador de publicaciones en redes",
+    "raw_idea": "Herramienta SaaS que permite a community managers programar publicaciones en multiples redes sociales desde un solo panel.",
+    "constraints": {"budget_level": "low", "time_horizon": "days", "stage": "validation"},
+    "reference_notes": "Deseabilidad y viabilidad (precio). Landing + venta simulada para precios."
+  }
+]

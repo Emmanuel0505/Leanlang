@@ -1,0 +1,124 @@
+"use client";
+
+import { useRef, useState } from "react";
+import type { Prioritization } from "@/lib/types";
+
+const W = 440, H = 380, pad = 38;
+const x = (e: number) => pad + e * (W - 2 * pad);
+const y = (imp: number) => H - pad - imp * (H - 2 * pad);
+const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+
+// Mapa 2x2: X = evidencia (izq sin → der con), Y = importancia (abajo → arriba).
+export function AssumptionsMap2x2({
+  items,
+  editable = false,
+  onMove,
+}: {
+  items: Prioritization[];
+  editable?: boolean;
+  onMove?: (id: string, importance: number, evidence: number) => void;
+}) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const halfW = (W - 2 * pad) / 2;
+  const halfH = (H - 2 * pad) / 2;
+
+  function valFromEvent(clientX: number, clientY: number) {
+    const rect = svgRef.current!.getBoundingClientRect();
+    const sx = ((clientX - rect.left) / rect.width) * W;
+    const sy = ((clientY - rect.top) / rect.height) * H;
+    return {
+      evidence: clamp01((sx - pad) / (W - 2 * pad)),
+      importance: clamp01(1 - (sy - pad) / (H - 2 * pad)),
+    };
+  }
+
+  function onPointerMove(e: React.PointerEvent) {
+    if (!dragId || !onMove) return;
+    const { importance, evidence } = valFromEvent(e.clientX, e.clientY);
+    onMove(dragId, importance, evidence);
+  }
+
+  function nudge(p: Prioritization, di: number, de: number) {
+    onMove?.(p.hypothesis_id, clamp01(p.importance + di), clamp01(p.evidence + de));
+  }
+
+  return (
+    <div className="card p-5">
+      <div className="mb-1 flex items-center justify-between">
+        <h3 className="font-display font-semibold text-ink">Mapa de supuestos</h3>
+        <span className="annot">importancia × evidencia</span>
+      </div>
+      <p className="mb-4 text-sm text-ink/60">
+        {editable
+          ? "Arrastra los puntos (o usa las flechas del teclado) para ajustar la priorización."
+          : "Lo importante y sin evidencia (en ámbar) se prueba primero."}
+      </p>
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${W} ${H}`}
+        className={`mx-auto h-auto w-full max-w-md touch-none ${editable ? "select-none" : ""}`}
+        role="img"
+        aria-label="Mapa de supuestos 2x2"
+        onPointerMove={onPointerMove}
+        onPointerUp={() => setDragId(null)}
+        onPointerLeave={() => setDragId(null)}
+      >
+        <defs>
+          <pattern id="grid2x2" width="22" height="22" patternUnits="userSpaceOnUse">
+            <path d="M22 0H0V22" fill="none" stroke="#d2dbea" strokeWidth="0.5" opacity="0.5" />
+          </pattern>
+        </defs>
+        <rect x={pad} y={pad} width={W - 2 * pad} height={H - 2 * pad} fill="url(#grid2x2)" />
+        <rect x={pad} y={pad} width={halfW} height={halfH} fill="#f2b100" opacity={0.12} />
+        <text x={pad + 8} y={pad + 18} fontSize={11} fontWeight={600} fill="#b07700" fontFamily="var(--font-mono)">PROBAR PRIMERO</text>
+
+        <line x1={W / 2} y1={pad} x2={W / 2} y2={H - pad} stroke="#c2cde0" strokeWidth={1.5} />
+        <line x1={pad} y1={H / 2} x2={W - pad} y2={H / 2} stroke="#c2cde0" strokeWidth={1.5} />
+        <rect x={pad} y={pad} width={W - 2 * pad} height={H - 2 * pad} fill="none" stroke="#c2cde0" strokeWidth={1.5} />
+
+        <text x={pad} y={H - 14} fontSize={10} fill="#1d44c0" opacity={0.7} fontFamily="var(--font-mono)">sin evidencia</text>
+        <text x={W - pad} y={H - 14} fontSize={10} fill="#1d44c0" opacity={0.7} textAnchor="end" fontFamily="var(--font-mono)">con evidencia</text>
+        <text x={pad - 8} y={pad + 2} fontSize={10} fill="#1d44c0" opacity={0.7} transform={`rotate(-90 ${pad - 8} ${pad + 2})`} textAnchor="end" fontFamily="var(--font-mono)">importante</text>
+        <text x={pad - 8} y={H - pad} fontSize={10} fill="#1d44c0" opacity={0.7} transform={`rotate(-90 ${pad - 8} ${H - pad})`} fontFamily="var(--font-mono)">poco import.</text>
+
+        {items.map((p) => {
+          const cx = x(p.evidence), cy = y(p.importance);
+          return (
+            <g
+              key={p.hypothesis_id}
+              className={editable ? "cursor-grab focus:outline-none" : ""}
+              tabIndex={editable ? 0 : -1}
+              role={editable ? "slider" : undefined}
+              aria-label={editable ? `${p.hypothesis_id}: importancia ${p.importance.toFixed(2)}, evidencia ${p.evidence.toFixed(2)}` : undefined}
+              onPointerDown={editable ? (e) => { (e.target as Element).setPointerCapture?.(e.pointerId); setDragId(p.hypothesis_id); } : undefined}
+              onKeyDown={
+                editable
+                  ? (e) => {
+                      const S = 0.04;
+                      if (e.key === "ArrowUp") { e.preventDefault(); nudge(p, S, 0); }
+                      else if (e.key === "ArrowDown") { e.preventDefault(); nudge(p, -S, 0); }
+                      else if (e.key === "ArrowRight") { e.preventDefault(); nudge(p, 0, S); }
+                      else if (e.key === "ArrowLeft") { e.preventDefault(); nudge(p, 0, -S); }
+                    }
+                  : undefined
+              }
+            >
+              {editable && dragId === p.hypothesis_id && (
+                <circle cx={cx} cy={cy} r={18} fill="#2456e6" opacity={0.12} />
+              )}
+              <circle cx={cx} cy={cy} r={12} fill={p.is_riskiest ? "#f2b100" : "#0e8fa8"} stroke="#fff" strokeWidth={2.5} />
+              <text x={cx} y={cy + 3.5} fontSize={9} fontWeight={700} fill={p.is_riskiest ? "#0c1a2e" : "#fff"} textAnchor="middle" fontFamily="var(--font-mono)" pointerEvents="none">
+                {p.hypothesis_id}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+      <div className="mt-3 flex items-center justify-center gap-5 text-xs text-ink/60">
+        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-accent-500" /> probar primero</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-feas" /> resto</span>
+      </div>
+    </div>
+  );
+}
