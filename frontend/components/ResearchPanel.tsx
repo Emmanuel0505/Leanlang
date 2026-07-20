@@ -1,7 +1,7 @@
 "use client";
 
 import type { ResearchReport } from "@/lib/types";
-import { formatDateOnly, formatTimeOnly } from "@/lib/format";
+import { formatDateOnly, formatTimeOnly, translateConfidence } from "@/lib/format";
 import { StatusBadge, type Status } from "./Status";
 
 const STATUS_MAP: Record<string, { status: Status; label: string }> = {
@@ -28,7 +28,7 @@ export function ResearchPanel({ report }: { report: ResearchReport }) {
           {report.confidence && (
             <div className="rounded-xl border border-line bg-paper/50 p-3">
               <div className="annot text-sm font-bold text-ink">Confianza</div>
-              <div className="mt-0.5 font-display text-lg font-semibold text-ink">{report.confidence}</div>
+              <div className="mt-0.5 font-display text-lg font-semibold text-ink">{translateConfidence(report.confidence)}</div>
             </div>
           )}
           {report.generated_at && (
