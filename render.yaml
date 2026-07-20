@@ -39,9 +39,9 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /health
-    # Corre las migraciones (incluye `CREATE EXTENSION IF NOT EXISTS vector;`)
-    # una sola vez antes de arrancar los workers nuevos:
-    preDeployCommand: alembic upgrade head
+    # `preDeployCommand` no esta disponible en el plan free de Render, asi que
+    # las migraciones (incluye `CREATE EXTENSION IF NOT EXISTS vector;`) corren
+    # dentro del CMD del Dockerfile, antes de levantar uvicorn en cada arranque.
     envVars:
       # Render no publica el RAM/CPU exacto del plan free; por las dudas se
       # arranca con 1 worker (subir a 2+ solo si al monitorear el servicio

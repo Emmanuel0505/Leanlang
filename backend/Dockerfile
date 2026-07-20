@@ -23,6 +23,7 @@ USER appuser
 EXPOSE 8000
 # WEB_CONCURRENCY controla cuantos workers levanta uvicorn (procesos separados,
 # cada uno con su propio ConnectionPool -- ver app/graph/runtime.py). Las
-# migraciones (`alembic upgrade head`) corren como paso previo de despliegue,
-# no dentro de este CMD.
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY:-2}"]
+# migraciones corren aca (no via `preDeployCommand`: no esta disponible en el
+# plan free de Render) -- `alembic upgrade head` es idempotente, no hace nada
+# si ya esta al dia, asi que repetirlo en cada arranque/despertar es seguro.
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY:-2}"]
