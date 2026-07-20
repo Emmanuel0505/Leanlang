@@ -10,6 +10,7 @@ from functools import lru_cache
 
 from langchain.chat_models import init_chat_model
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.runnables import RunnableLambda
 
 from app.core.config import settings
 
@@ -26,12 +27,33 @@ def get_model(temperature: float | None = None) -> BaseChatModel:
         kwargs["base_url"] = settings.llm_base_url
     if settings.llm_api_key:
         kwargs["api_key"] = settings.llm_api_key
+    if settings.llm_base_url and "deepseek.com" in settings.llm_base_url:
+        # Los modelos DeepSeek v4 (pro/flash) razonan ("thinking") por defecto y en
+        # ese modo la API rechaza cualquier tool_choice forzado -- justo lo que usa
+        # with_structured_output(method="function_calling") en get_structured_model.
+        # Hay que desactivarlo explicitamente (mismo esquema que el thinking de Anthropic).
+        kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
     return init_chat_model(
         model=settings.llm_model,
         model_provider=settings.llm_provider,
         temperature=settings.llm_temperature if temperature is None else temperature,
         **kwargs,
     )
+
+
+def _raise_if_none(value):
+    """DeepSeek a veces responde `finish_reason: tool_calls` con `tool_calls: []`
+    (probable JSON de argumentos mal formado descartado al parsear): el parser de
+    LangChain no lanza excepcion en ese caso, simplemente devuelve `None`. Sin este
+    chequeo, `with_retry` nunca se activa (no hay excepcion que reintentar) y el
+    `None` llega tal cual al agente, que revienta con `AttributeError` al acceder
+    a un campo del schema esperado.
+    """
+    if value is None:
+        raise ValueError(
+            "El modelo no genero una salida estructurada valida (tool call vacio)."
+        )
+    return value
 
 
 def get_structured_model(schema, temperature: float | None = None):
@@ -41,10 +63,12 @@ def get_structured_model(schema, temperature: float | None = None):
     de json_schema (que no todos los endpoints compatibles soportan).
 
     `with_retry` reintenta cuando el modelo devuelve una salida vacia o mal formada
-    (p. ej. DeepSeek a veces responde `{}`), evitando que una corrida entera falle
-    por una respuesta puntualmente invalida.
+    (p. ej. DeepSeek a veces responde `{}`, o el tool call sale vacio -- ver
+    `_raise_if_none`), evitando que una corrida entera falle por una respuesta
+    puntualmente invalida.
     """
     structured = get_model(temperature=temperature).with_structured_output(
         schema, method="function_calling"
     )
-    return structured.with_retry(stop_after_attempt=3)
+    chain = structured | RunnableLambda(_raise_if_none)
+    return chain.with_retry(stop_after_attempt=3)

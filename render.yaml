@@ -1,0 +1,126 @@
+# Render Blueprint — despliega backend, frontend y Postgres (con pgvector) juntos.
+# Uso: en Render, "New +" -> "Blueprint" -> conectar este repo -> Render lee este
+# archivo y crea los 3 recursos de abajo. Los valores marcados `sync: false` se
+# piden en el dashboard (nunca se commitean).
+#
+# *** PLAN FREE (etapa de pruebas) -- limites reales a tener en cuenta: ***
+#   - leanlang-db (Postgres free): se BORRA automaticamente a los 30 dias +
+#     14 de gracia (44 dias totales) si no se sube a un plan pago antes. Sin
+#     backups. 1 GB de almacenamiento. Poner un recordatorio para migrar o
+#     exportar los datos antes del dia 30.
+#   - leanlang-backend / leanlang-frontend (web free): maximo 1 instancia
+#     (no hay escalado horizontal en free -- el fix del ConnectionPool sigue
+#     protegiendo la concurrencia *dentro* de esa unica instancia, pero no se
+#     puede repartir carga entre varias). Se duermen tras 15 min sin trafico
+#     (~1 min de cold start al despertar; el primer resume de un blueprint
+#     despues de una revision humana larga puede tardar ese minuto extra).
+#   - 750 horas/mes gratis compartidas entre los servicios free del workspace.
+#
+# Flujo de 2 pasadas (inevitable con cualquier PaaS): el backend y el frontend
+# necesitan la URL publica del otro, pero esa URL no existe hasta el primer
+# deploy. Pasos:
+#   1) Deploy inicial (las envVars cruzadas quedan vacias/placeholder).
+#   2) Copiar la URL publica que Render asigna a "backend" y "frontend".
+#   3) Pegarla en CORS_ORIGINS (backend) y NEXT_PUBLIC_API_URL (frontend).
+#   4) Redeploy manual de ambos servicios.
+
+databases:
+  - name: leanlang-db
+    plan: free
+    region: oregon
+    postgresMajorVersion: "16"
+
+services:
+  - name: leanlang-backend
+    type: web
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    # Corre las migraciones (incluye `CREATE EXTENSION IF NOT EXISTS vector;`)
+    # una sola vez antes de arrancar los workers nuevos:
+    preDeployCommand: alembic upgrade head
+    envVars:
+      # Render no publica el RAM/CPU exacto del plan free; por las dudas se
+      # arranca con 1 worker (subir a 2+ solo si al monitorear el servicio
+      # sobra memoria). Free Postgres tampoco publica su limite de conexiones,
+      # asi que los pools se dejan chicos (backend + checkpointer <= 10
+      # conexiones combinadas) -- subir estos numeros al pasar a un plan pago.
+      - key: WEB_CONCURRENCY
+        value: "1"
+      - key: APP_ENV
+        value: production
+
+      # --- DB de negocio (SQLAlchemy necesita el driver +psycopg explicito;
+      # `fromDatabase.connectionString` de Render da `postgresql://` a secas,
+      # asi que se completa a mano una sola vez con el prefijo): ---
+      - key: DATABASE_URL
+        sync: false   # pegar: postgresql+psycopg://<mismo valor que Render asigno a leanlang-db>
+      - key: DB_POOL_SIZE
+        value: "5"
+      - key: DB_MAX_OVERFLOW
+        value: "5"
+
+      # --- Checkpointer de LangGraph (psycopg puro, no necesita +psycopg): ---
+      - key: LANGGRAPH_PG_DSN
+        fromDatabase:
+          name: leanlang-db
+          property: connectionString
+      - key: LANGGRAPH_POOL_SIZE
+        value: "5"   # conexiones concurrentes para blueprints corriendo a la vez
+
+      # --- LLM (DeepSeek via endpoint compatible con OpenAI) ---
+      - key: LLM_PROVIDER
+        value: openai
+      - key: LLM_MODEL
+        value: deepseek-v4-pro
+      - key: LLM_BASE_URL
+        value: https://api.deepseek.com
+      - key: LLM_TEMPERATURE
+        value: "0.2"
+      - key: LLM_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+
+      # --- Investigador (Tavily) ---
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: RESEARCH_ENABLED
+        value: "true"
+
+      # --- Auth ---
+      - key: JWT_SECRET
+        generateValue: true   # Render genera un secreto random en el primer deploy
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"
+
+      # --- App: URL publica real del frontend (paso 2 del flujo de arriba) ---
+      - key: CORS_ORIGINS
+        sync: false   # ej: https://leanlang-frontend.onrender.com
+
+      # --- Observabilidad (LangSmith) ---
+      - key: LANGSMITH_TRACING
+        value: "true"
+      - key: LANGSMITH_API_KEY
+        sync: false
+      - key: LANGSMITH_PROJECT
+        value: validation-blueprint-prod
+
+  - name: leanlang-frontend
+    type: web
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    envVars:
+      # URL publica real del backend (paso 2 del flujo de arriba):
+      - key: NEXT_PUBLIC_API_URL
+        sync: false   # ej: https://leanlang-backend.onrender.com

@@ -1,12 +1,12 @@
 services:
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: postgre
       POSTGRES_DB: blueprint
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -21,8 +21,8 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/blueprint
-      LANGGRAPH_PG_DSN: postgresql://postgres:postgres@db:5432/blueprint
+      DATABASE_URL: postgresql+psycopg://postgres:postgre@db:5432/blueprint
+      LANGGRAPH_PG_DSN: postgresql://postgres:postgre@db:5432/blueprint
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
       LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
       LLM_MODEL: ${LLM_MODEL:-claude-sonnet-4-5}

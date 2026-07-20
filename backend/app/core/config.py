@@ -31,12 +31,18 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://postgres:admin@localhost:5432/blueprint"
     langgraph_pg_dsn: str = "postgresql://postgres:admin@localhost:5432/blueprint"
     # Pool de conexiones SQLAlchemy (Fase 2, ver docs/audits/phase2_rag_architecture_improvements.md).
-    # El checkpointer de LangGraph (PostgresSaver) usa su propia conexion unica
-    # (psycopg.Connection.connect, no un pool) — es independiente de este pool.
-    # Este dimensionamiento cubre solo el CRUD de negocio (auth/projects/blueprints)
-    # y la escritura de la proyeccion derivada `blueprints.state`, ambos de vida corta.
+    # Cubre solo el CRUD de negocio (auth/projects/blueprints) y la escritura de la
+    # proyeccion derivada `blueprints.state`, ambos de vida corta.
     db_pool_size: int = 10
     db_max_overflow: int = 20
+    # Pool de conexiones del checkpointer de LangGraph (PostgresSaver). Cada corrida
+    # de blueprint (`graph.stream`) se ejecuta en su propio hilo (ver app/api/streaming.py);
+    # con una sola conexion compartida (comportamiento original), 2+ usuarios corriendo
+    # blueprints en simultaneo comparten el mismo objeto Connection de psycopg entre
+    # hilos sin sincronizacion, lo que puede corromper el estado o lanzar errores
+    # intermitentes. `langgraph_pool_size` dimensiona cuantas corridas concurrentes
+    # soporta el checkpointer antes de que las corridas adicionales esperen turno.
+    langgraph_pool_size: int = 10
     db_pool_timeout: int = 30
     db_pool_recycle: int = 1800
 

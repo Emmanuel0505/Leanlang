@@ -68,10 +68,27 @@ def init_graph_postgres(stack: ExitStack):
     """Compila el grafo con PostgresSaver; cae a memoria si Postgres no esta disponible."""
     global _graph, _checkpointer_backend, _checkpointer_degraded
     try:
+        from psycopg.rows import dict_row
+        from psycopg_pool import ConnectionPool
+
         from langgraph.checkpoint.postgres import PostgresSaver
 
         dsn = _with_search_path(settings.langgraph_pg_dsn)
-        saver = stack.enter_context(PostgresSaver.from_conn_string(dsn))
+        # ConnectionPool en vez de una unica Connection: PostgresSaver acepta ambas
+        # (ver langgraph.checkpoint.postgres._internal.Conn), pero con una unica
+        # conexion compartida, corridas concurrentes de blueprint (cada una en su
+        # propio hilo, ver app/api/streaming.py) reusan el mismo objeto psycopg.Connection
+        # sin sincronizacion -- inseguro para multiples usuarios en simultaneo.
+        pool = ConnectionPool(
+            conninfo=dsn,
+            min_size=1,
+            max_size=settings.langgraph_pool_size,
+            kwargs={"autocommit": True, "prepare_threshold": 0, "row_factory": dict_row},
+            open=False,
+        )
+        stack.callback(pool.close)
+        pool.open(wait=True, timeout=10)
+        saver = PostgresSaver(pool)
         saver.setup()  # crea checkpoints/checkpoint_blobs/checkpoint_writes/checkpoint_migrations en `langgraph`
         _graph = build_blueprint_graph(saver)
         _checkpointer_backend = "postgres"

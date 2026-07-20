@@ -1,0 +1,14 @@
+.venv/
+venv/
+.env
+.env.local
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.langgraph_api/
+*.egg-info/
+tests/
+docs/
+POSTGRESQL_MIGRATION_PLAN.md
+.git/
