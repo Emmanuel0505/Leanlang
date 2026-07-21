@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
@@ -27,10 +28,14 @@ export const metadata: Metadata = {
 const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('vb_theme');var d=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d);}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // headers() opta a TODA la app por renderizado dinamico (necesario para
+  // que el nonce de middleware.ts sea distinto -y valido- en cada request;
+  // ver docs de Next.js sobre CSP con nonce).
+  const nonce = headers().get("x-nonce") ?? undefined;
   return (
     <html lang="es" className={`${display.variable} ${sans.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="min-h-screen bg-paper font-sans text-ink antialiased">
         <AuthProvider>{children}</AuthProvider>
