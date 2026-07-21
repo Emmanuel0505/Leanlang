@@ -4,7 +4,9 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+import re
+
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.schemas.blueprint import Constraints
 
@@ -13,6 +15,13 @@ from app.schemas.blueprint import Constraints
 class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
+
+    @field_validator("password")
+    @classmethod
+    def _password_complexity(cls, v: str) -> str:
+        if not re.search(r"[a-zA-Z]", v) or not re.search(r"\d", v):
+            raise ValueError("La contrasena debe incluir al menos una letra y un numero")
+        return v
 
 
 class UserOut(BaseModel):

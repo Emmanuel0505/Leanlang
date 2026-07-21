@@ -26,6 +26,7 @@ dependencies = [
     "langchain-openai>=0.2",
     "langsmith>=0.1.100",
     "tavily-python>=0.5",
+    "slowapi>=0.1.9",
 ]
 
 [project.optional-dependencies]

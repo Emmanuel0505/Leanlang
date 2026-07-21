@@ -5,11 +5,14 @@ from contextlib import ExitStack, asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.api.routes import auth, blueprint, export, projects
 from app.catalog.seed import seed_experiments
 from app.core.config import settings
 from app.core.observability import configure_langsmith
+from app.core.rate_limit import limiter
 from app.db.session import SessionLocal
 from app.graph.runtime import get_checkpointer_status, init_graph_memory, init_graph_persistent
 
@@ -42,7 +45,21 @@ async def lifespan(app: FastAPI):
         stack.close()
 
 
-app = FastAPI(title="Validation Blueprint API", version="0.1.0", lifespan=lifespan)
+docs_enabled = settings.app_env != "production"
+app = FastAPI(
+    title="Validation Blueprint API",
+    version="0.1.0",
+    lifespan=lifespan,
+    # /docs, /redoc y /openapi.json exponen rutas, esquemas y parametros de toda
+    # la API sin autenticacion -- reconocimiento gratis para un atacante. Se
+    # desactivan en produccion (APP_ENV=production); siguen disponibles en dev.
+    docs_url="/docs" if docs_enabled else None,
+    redoc_url="/redoc" if docs_enabled else None,
+    openapi_url="/openapi.json" if docs_enabled else None,
+)
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
