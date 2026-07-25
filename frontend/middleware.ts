@@ -19,9 +19,15 @@ const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
  */
 export function middleware(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  // 'unsafe-eval' SOLO en dev: React Fast Refresh / el runtime de webpack de
+  // `next dev` usa eval() para hot-reload y mejores stack traces (ver docs de
+  // Next.js sobre CSP). En produccion ni React ni Next usan eval, asi que no
+  // hace falta y no se agrega (confirmado: la CSP sin esto ya funciona bien
+  // en el deploy de Render).
+  const isDev = process.env.NODE_ENV === "development";
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self' data:",
