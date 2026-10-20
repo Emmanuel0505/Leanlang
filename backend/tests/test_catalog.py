@@ -1,7 +1,9 @@
 """Tests del catalogo de experimentos (sin LLM)."""
 from __future__ import annotations
 
+import ast
 import inspect
+import textwrap
 
 import pytest
 
@@ -57,9 +59,16 @@ def test_knowledge_service_is_a_protocol_not_a_stub():
 
 
 def test_knowledge_service_semantic_search_has_no_executable_body():
-    source = inspect.getsource(service.KnowledgeService.semantic_search)
-    body = source.split(":", 1)[1].strip()
-    assert body in ("...", "...\n")
+    # Partir el source en el primer ":" se rompia en cuanto la firma gano una
+    # anotacion de tipo con su propio ":" (p. ej. `query: str`) -- el split
+    # agarraba el resto de los parametros en vez del cuerpo. Parsear con `ast`
+    # en vez de cortar el string a ciegas es robusto a cualquier firma.
+    source = textwrap.dedent(inspect.getsource(service.KnowledgeService.semantic_search))
+    func = ast.parse(source).body[0]
+    assert len(func.body) == 1
+    stmt = func.body[0]
+    assert isinstance(stmt, ast.Expr)
+    assert isinstance(stmt.value, ast.Constant) and stmt.value.value is Ellipsis
 
 
 def test_query_experiments_signature_matches_protocol():

@@ -51,14 +51,21 @@ function translateValidation(d: any): string {
   return `${label}: ${d?.msg || "valor inválido"}.`;
 }
 
-/** Construye un mensaje legible a partir de la respuesta de error. */
+/** Construye un mensaje legible a partir de la respuesta de error.
+ *
+ * Prioriza el `detail` que manda el backend (p. ej. "Email o contrasena
+ * incorrectos" en /auth/login) sobre el mensaje generico de 401: ese generico
+ * es para endpoints autenticados cuyo token expiro, no para un login fallido. */
 async function friendlyMessage(res: Response): Promise<string> {
-  if (res.status === 401) return "Tu sesión expiró. Vuelve a iniciar sesión.";
   let body: any;
-  try { body = await res.json(); } catch { return `Error del servidor (${res.status}).`; }
+  try { body = await res.json(); } catch {
+    if (res.status === 401) return "Tu sesión expiró. Vuelve a iniciar sesión.";
+    return `Error del servidor (${res.status}).`;
+  }
   const detail = body?.detail;
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) return detail.map(translateValidation).join(" ");
+  if (res.status === 401) return "Tu sesión expiró. Vuelve a iniciar sesión.";
   return `Error del servidor (${res.status}).`;
 }
 
@@ -96,9 +103,8 @@ export async function login(email: string, password: string): Promise<string> {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: form.toString(),
   });
-  if (!res.ok) throw new Error("Credenciales invalidas");
-  const data = await res.json();
-  return data.access_token as string;
+  const data = await handle<{ access_token: string }>(res);
+  return data.access_token;
 }
 
 export async function register(email: string, password: string): Promise<void> {
@@ -107,5 +113,5 @@ export async function register(email: string, password: string): Promise<void> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
-  if (!res.ok) throw new Error(await res.text());
+  await handle<unknown>(res);
 }

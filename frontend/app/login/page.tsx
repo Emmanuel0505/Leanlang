@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { ApiError } from "@/lib/api";
 import { AuthShell } from "@/components/AuthShell";
 
 export default function LoginPage() {
@@ -21,8 +22,12 @@ export default function LoginPage() {
     try {
       await login(email, password);
       router.replace("/dashboard");
-    } catch {
-      setError("Email o contraseña incorrectos.");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("No se pudo conectar con el servidor. Verifica tu conexión e intenta de nuevo.");
+      }
       setLoading(false);
     }
   }

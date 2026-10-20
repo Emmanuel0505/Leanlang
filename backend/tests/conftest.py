@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 import pytest
@@ -148,12 +149,35 @@ def _canned(schema):
     raise AssertionError(f"schema no soportado en el fake: {schema}")
 
 
+_HYP_ID_RE = re.compile(r'"id":\s*"(h\d+)"')
+
+
 class _FakeStructured:
     def __init__(self, schema):
         self.schema = schema
 
-    def invoke(self, _msgs):
-        return _canned(self.schema)
+    def invoke(self, msgs):
+        result = _canned(self.schema)
+        # Una LLM real solo clasifica/prioriza las hipotesis que recibio en el
+        # prompt; el canned de arriba es fijo (h1/h2/h3) sin mirar el input. Sin
+        # este filtro, un test que edita/elimina hipotesis (resume humano) y
+        # vuelve a pasar por Risk ve clasificaciones de hipotesis que ya no
+        # existen (ver test_human_deletes_hypotheses).
+        if hasattr(result, "classifications") or hasattr(result, "prioritization"):
+            content = "\n".join(
+                str(getattr(m, "content", m)) for m in (msgs if isinstance(msgs, list) else [msgs])
+            )
+            ids_in_prompt = set(_HYP_ID_RE.findall(content))
+            if ids_in_prompt:
+                if hasattr(result, "classifications"):
+                    result = result.model_copy(update={
+                        "classifications": [c for c in result.classifications if c.hypothesis_id in ids_in_prompt]
+                    })
+                if hasattr(result, "prioritization"):
+                    result = result.model_copy(update={
+                        "prioritization": [p for p in result.prioritization if p.hypothesis_id in ids_in_prompt]
+                    })
+        return result
 
 
 @pytest.fixture
@@ -174,7 +198,11 @@ def fake_llm(monkeypatch):
     import app.agents.supervisor as supervisor
     import app.agents.value_proposition as value_proposition
 
-    def fake_get_structured_model(schema, temperature=None):
+    def fake_get_structured_model(schema, temperature=None, tier=None):
+        # `tier` (high/medium/low) solo selecciona que modelo real usar (ver
+        # app/core/llm.py); el fake no llama a ningun modelo, asi que lo
+        # acepta y lo ignora -- sin este parametro, cualquier agente que lo
+        # pase como kwarg (todos, ver app/agents/*.py) rompe con TypeError.
         return _FakeStructured(schema)
 
     for mod in (problem, customer_segment, value_proposition, business_model, hypotheses, risk,

@@ -46,6 +46,13 @@ class KnowledgeService(Protocol):
         max_setup_time: int | None = None,
         min_evidence_strength: int | None = None,
         limit: int = 10,
+        # `@traceable` (langsmith) inyecta este kwarg keyword-only en la funcion
+        # real de abajo para que el caller pueda pasar el RunnableConfig del
+        # grafo y el run anide bajo el nodo correspondiente en LangSmith. Se
+        # declara aqui tambien para que la firma del Protocol siga coincidiendo
+        # con la de la implementacion real (ver test_query_experiments_signature_matches_protocol).
+        *,
+        config: Any = None,
     ) -> list[ExperimentCatalogItem]: ...
 
     def semantic_search(self, query: str, top_k: int = 5) -> Sequence[Any]: ...

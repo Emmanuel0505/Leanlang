@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { ApiError } from "@/lib/api";
 import { AuthShell } from "@/components/AuthShell";
 
 export default function RegisterPage() {
@@ -22,7 +23,14 @@ export default function RegisterPage() {
       await register(email, password);
       router.replace("/dashboard");
     } catch (err) {
-      setError(err instanceof Error && err.message ? "No se pudo registrar. ¿Ya existe ese email?" : "No se pudo registrar.");
+      // ApiError trae el mensaje real del backend (422, email duplicado, etc.).
+      // Cualquier otro error (red caída, CORS, backend apagado) no es "ya existe
+      // el email" — mostrarlo como tal ocultaba el problema real.
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("No se pudo conectar con el servidor. Verifica tu conexión e intenta de nuevo.");
+      }
       setLoading(false);
     }
   }
