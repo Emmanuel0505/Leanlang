@@ -33,6 +33,7 @@ def _assemble_test_cards(state: BlueprintState, criteria: list[dict], metrics: l
         cards.append({
             "hypothesis_id": r.get("hypothesis_id"),
             "experiment_id": r.get("experiment_id"),
+            "experiment_name": r.get("experiment_name") or r.get("experiment_id", ""),
             "hypothesis_statement": hyp_by_id.get(r.get("hypothesis_id"), {}).get("statement", ""),
             "test_description": r.get("design_detail") or r.get("rationale", ""),
             "metric": m.get("metric", ""),

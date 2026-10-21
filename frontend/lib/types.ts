@@ -146,6 +146,9 @@ export interface ExperimentRec {
 export interface TestCard {
   hypothesis_id: string;
   experiment_id: string;
+  /** Nombre legible del catalogo (ej. "Pico de experiencia" para "xp-spike").
+   * Puede venir vacio en blueprints generados antes de este campo. */
+  experiment_name?: string;
   hypothesis_statement: string;
   test_description: string;
   metric: string;

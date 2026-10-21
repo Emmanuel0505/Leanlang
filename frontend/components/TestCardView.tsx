@@ -13,9 +13,14 @@ export function TestCardView({ card, decision }: { card: TestCard; decision?: De
   );
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
-      <div className="flex items-center justify-between border-b border-line bg-tint px-4 py-2.5">
-        <h4 className="font-display text-sm font-semibold text-blueprint-800 dark:text-blueprint-200">{card.experiment_id}</h4>
-        <span className="badge bg-surface font-mono text-blueprint-700 dark:text-blueprint-300">{card.hypothesis_id}</span>
+      <div className="flex items-center justify-between gap-2 border-b border-line bg-tint px-4 py-2.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <h4 className="truncate font-display text-sm font-semibold text-blueprint-800 dark:text-blueprint-200">
+            {card.experiment_name || card.experiment_id}
+          </h4>
+          <span className="shrink-0 font-mono text-[11px] text-blueprint-700/60 dark:text-blueprint-300/60">{card.experiment_id}</span>
+        </div>
+        <span className="badge shrink-0 bg-surface font-mono text-blueprint-700 dark:text-blueprint-300">{card.hypothesis_id}</span>
       </div>
       <div className="px-4 pb-3">
         <Row label="Creemos que" value={card.hypothesis_statement} />

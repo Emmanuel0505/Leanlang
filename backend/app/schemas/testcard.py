@@ -11,6 +11,11 @@ class TestCard(BaseModel):
 
     hypothesis_id: str
     experiment_id: str
+    # Nombre legible del experimento (catalogo, en espanol -- ver ExperimentRec).
+    # Default al id por compatibilidad con blueprints viejos generados antes de
+    # este campo, donde la UI mostraba el id crudo (ej. "xp-spike") en vez del
+    # nombre (ej. "Pico de experiencia").
+    experiment_name: str = ""
     # Paso 1: Hipotesis (texto), Paso 2: Test, Paso 3: Metrica, Paso 4: Criterio
     hypothesis_statement: str = Field(description="'Creemos que...'")
     test_description: str = Field(description="'Para verificarlo, vamos a...'")

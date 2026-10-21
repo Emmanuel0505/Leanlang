@@ -69,8 +69,22 @@ Reglas:
   encajan con los pains del cliente.
 - gain_creators: genera UNICAMENTE los 4 creadores de ganancia mas relevantes (maximo 4), los que mejor
   encajan con los gains del cliente.
-- differentiator: que la hace distinta de las alternativas actuales (version completa, sin limite de longitud).
-- differentiator_summary: resumen de `differentiator`.
+- differentiator: en que es REALMENTE distinta de las alternativas actuales (version completa, sin limite
+  de longitud). Construila en dos pasos, siempre en ese orden:
+  1. Nombra la(s) alternativa(s) real(es) que el cliente usa HOY para resolver este problema -- los
+     competidores de la evidencia externa si hay (seccion `competitors` mas abajo), o si no hay investigacion,
+     la alternativa mas obvia (un competidor generico conocido, un proceso manual, una herramienta de
+     proposito general, o directamente "no resolverlo").
+  2. Contrasta: que hace esta propuesta que esas alternativas NO hacen, o hacen peor/mas caro/mas lento --
+     y por que esa diferencia le importa al cliente (que pain alivia o que gain crea mejor que la alternativa).
+  Error mas comun a evitar: describir la categoria/solucion generica y simplemente agregarle "lo que se
+  quiere hacer" al final, sin comparacion real (ej. "Existen apps de fitness con seguimiento de rutinas,
+  y la nuestra tambien lo tendra" NO es un diferenciador -- es una feature mas, sin contraste). Un
+  diferenciador real explica POR QUE la diferencia importa, no solo QUE es distinta.
+  Si la idea es genuinamente nueva y no hay ninguna alternativa real identificable, decilo explicitamente
+  en vez de forzar una comparacion inventada.
+- differentiator_summary: resumen de `differentiator` (conserva igual el contraste cliente-alternativa,
+  no solo la mitad "que hacemos nosotros").
 
 {SUMMARY_FIELD_RULES}"""
 
@@ -268,10 +282,13 @@ Reglas:
 - Si execute=true, genera entre 3 y 5 queries complementarias, cada una enfocada en un aspecto distinto:
   competidores, tamano de mercado, tendencias, modelos de negocio, regulaciones.
 - Las queries deben ser concisas y buscables (estilo motor de busqueda), no preguntas completas.
+- Las queries van SIEMPRE en espanol (coherente con el resto del blueprint, que el usuario lee en espanol),
+  salvo que la raw_idea este en otro idioma -- en ese caso segui el idioma de la raw_idea.
 - Si execute=false, queries debe quedar vacia.
 
-Ejemplo para 'app de estacionamientos': parking app competitors, parking market size,
-parking startup trends, parking business models, parking regulations.
+Ejemplo para 'app de estacionamientos': competidores de apps de estacionamiento, tamano de mercado
+estacionamiento, tendencias de startups de estacionamiento, modelos de negocio de estacionamiento,
+regulaciones de estacionamiento.
 """
 
 RESEARCH_SYSTEM = """Eres el Agente Investigador. A partir de los resultados de busqueda (Tavily) para las
