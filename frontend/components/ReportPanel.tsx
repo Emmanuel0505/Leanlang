@@ -2,7 +2,7 @@
 
 import type { Report } from "@/lib/types";
 
-export function ReportPanel({ report, onExport }: { report: Report; onExport?: (f: "md" | "json") => void }) {
+export function ReportPanel({ report, onExport }: { report: Report; onExport?: (f: "pdf" | "md" | "json") => void }) {
   return (
     <div className="space-y-4">
       <div className="card relative overflow-hidden p-6">
@@ -63,8 +63,13 @@ export function ReportPanel({ report, onExport }: { report: Report; onExport?: (
 
       {onExport && (
         <div className="flex gap-2">
-          <button onClick={() => onExport("md")} className="btn-secondary">Exportar informe .md</button>
-          <button onClick={() => onExport("json")} className="btn-secondary">Exportar .json</button>
+          <button onClick={() => onExport("pdf")} className="btn-secondary inline-flex items-center gap-1.5">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <path d="M14 2v6h6M12 18v-6M9.5 14.5 12 12l2.5 2.5" />
+            </svg>
+            Exportar informe en PDF
+          </button>
         </div>
       )}
     </div>

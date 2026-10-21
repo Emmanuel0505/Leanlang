@@ -252,15 +252,21 @@ export default function Workspace() {
     refreshVersions();
   }
 
-  async function download(format: "md" | "json") {
+  async function download(format: "pdf" | "md" | "json" = "pdf") {
     if (!blueprintId) return;
     const res = await fetch(`${API_URL}/blueprint/${blueprintId}/export?format=${format}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
     });
+    if (!res.ok) { setError("No se pudo exportar el blueprint."); return; }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
+    // El backend nombra el archivo con el nombre real del proyecto
+    // (Content-Disposition); si no viene por algun motivo, cae al generico.
+    const disposition = res.headers.get("content-disposition") || "";
+    const match = disposition.match(/filename="([^"]+)"/);
+    const filename = match?.[1] || `blueprint.${format}`;
     const a = document.createElement("a");
-    a.href = url; a.download = `blueprint.${format}`; a.click();
+    a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
   }
 
@@ -301,10 +307,13 @@ export default function Workspace() {
             )}
             {phase === "error" && <button onClick={start} className="btn-primary">Reintentar</button>}
             {phase === "done" && (
-              <>
-                <button onClick={() => download("md")} className="btn-secondary">Exportar .md</button>
-                <button onClick={() => download("json")} className="btn-secondary">Exportar .json</button>
-              </>
+              <button onClick={() => download("pdf")} className="btn-secondary inline-flex items-center gap-1.5">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <path d="M14 2v6h6M12 18v-6M9.5 14.5 12 12l2.5 2.5" />
+                </svg>
+                Exportar PDF
+              </button>
             )}
           </div>
         </div>
@@ -368,7 +377,7 @@ function StagePanel({
   onResume: (stage: string, payload: Record<string, unknown>) => void;
   onJump: (k: string) => void;
   onFocusHyp: (hid: string) => void;
-  onExport: (f: "md" | "json") => void;
+  onExport: (f: "pdf" | "md" | "json") => void;
 }) {
   // Única fuente de verdad para la colección de hipótesis en revisión: la comparten
   // la lista de tarjetas y el Roadmap, evitando estado paralelo entre ambos.

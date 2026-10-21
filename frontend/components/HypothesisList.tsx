@@ -33,6 +33,14 @@ export function HypothesisList({ hypotheses, classifications, prioritization, ed
 
   return (
     <div className="space-y-3">
+      {editable && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-blueprint-500/30 bg-blueprint-500/10 px-3.5 py-2.5 text-sm text-blueprint-800 dark:text-blueprint-200">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="mt-0.5 shrink-0">
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3Z" />
+          </svg>
+          <span>Podés editar el texto de cada hipótesis o eliminarla (ícono 🗑) antes de confirmar.</span>
+        </div>
+      )}
       {items.map((h, i) => {
         const prio = prioByH[h.id];
         return (
@@ -62,13 +70,21 @@ export function HypothesisList({ hypotheses, classifications, prioritization, ed
                 <span className={`badge ${editable ? "" : "ml-auto"} bg-accent-500 text-ink`}>▲ probar primero</span>
               )}
               {editable && (
+                <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-blueprint-500/15 px-2 py-0.5 text-[11px] font-medium text-blueprint-700 dark:text-blueprint-300">
+                  <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3Z" />
+                  </svg>
+                  Editable
+                </span>
+              )}
+              {editable && (
                 <button
                   type="button"
                   onClick={() => remove(i)}
                   disabled={atMinimum}
                   aria-label={`Eliminar ${h.id}`}
                   title={atMinimum ? "Debe existir al menos una hipótesis para continuar." : `Eliminar ${h.id}`}
-                  className="ml-auto grid h-8 w-8 place-items-center rounded-lg border border-danger bg-surface text-danger transition duration-200 hover:bg-danger hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-surface disabled:hover:text-danger"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-danger bg-surface text-danger transition duration-200 hover:bg-danger hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-surface disabled:hover:text-danger"
                 >
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <path d="M4 7h16M9 7V4.8c0-.44.36-.8.8-.8h4.4c.44 0 .8.36.8.8V7m-9 0 .7 12.1a2 2 0 0 0 2 1.9h5.6a2 2 0 0 0 2-1.9L18 7M10 11v6M14 11v6" />

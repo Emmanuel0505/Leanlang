@@ -27,6 +27,7 @@ dependencies = [
     "langsmith>=0.1.100",
     "tavily-python>=0.5",
     "slowapi>=0.1.9",
+    "reportlab>=5.0",
 ]
 
 [project.optional-dependencies]

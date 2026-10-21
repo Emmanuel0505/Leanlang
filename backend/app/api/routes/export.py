@@ -1,12 +1,13 @@
-"""Export del Blueprint a Markdown o JSON."""
+"""Export del Blueprint a PDF (principal), Markdown o JSON."""
 from __future__ import annotations
 
 import json
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, Response
 from sqlalchemy.orm import Session
 
+from app.api.pdf_export import build_blueprint_pdf
 from app.auth.security import get_current_user
 from app.db.models import Blueprint, Project, User
 from app.db.session import get_db
@@ -55,6 +56,20 @@ def _to_markdown(bp: dict) -> str:
             f"{'SI' if p.get('is_riskiest') else ''} |"
         )
 
+    research = bp.get("research") or {}
+    if research and research.get("status") not in (None, "failed", "empty"):
+        lines.append("\n## Investigacion (evidencia externa)\n")
+        if research.get("confidence"):
+            lines.append(f"- **Confianza:** {research['confidence']}")
+        if research.get("market_summary"):
+            lines.append(f"- **Resumen de mercado:** {research['market_summary']}")
+        if research.get("queries"):
+            lines.append(f"- **Consultas realizadas:** {', '.join(research['queries'])}")
+        if research.get("competitors"):
+            lines.append("- **Competidores:** " + "; ".join(
+                f"{c.get('name', '')} — {c.get('description', '')}".strip(" —") for c in research["competitors"]
+            ))
+
     lines.append("\n## Experimentos disenados\n")
     for r in sorted(bp.get("recommendations", []), key=lambda x: x.get("sequence_order", 99)):
         lines.append(
@@ -76,6 +91,20 @@ def _to_markdown(bp: dict) -> str:
             f"- Evidencia esperada: {tc['expected_evidence_strength']}/5 | "
             f"Costo: {tc['cost']}/5 | Duracion: {tc['duration_estimate']}\n"
         )
+
+    plan = bp.get("plan_estimate") or {}
+    if plan:
+        lines.append("\n## Plan estimado\n")
+        lines.append(
+            f"- Experimentos: {plan.get('experiment_count', '-')} | "
+            f"Costo total: {plan.get('total_cost_points', '-')} | "
+            f"Esfuerzo total: {plan.get('total_effort_points', '-')} | "
+            f"Costo max.: {plan.get('max_cost', '-')}"
+        )
+        if plan.get("required_capabilities"):
+            lines.append(f"- **Capacidades requeridas:** {', '.join(plan['required_capabilities'])}")
+        for warn in plan.get("warnings", []):
+            lines.append(f"- ⚠️ {warn}")
 
     review = bp.get("critic_review")
     if review:
@@ -119,10 +148,19 @@ def _to_markdown(bp: dict) -> str:
     return "\n".join(lines)
 
 
+def _safe_filename(name: str) -> str:
+    """Nombre de archivo seguro (ASCII, sin espacios) para el header
+    Content-Disposition -- evita problemas con acentos/caracteres especiales
+    del nombre del proyecto en distintos navegadores."""
+    cleaned = "".join(c if c.isalnum() else "-" for c in (name or "blueprint"))
+    cleaned = "-".join(filter(None, cleaned.split("-"))) or "blueprint"
+    return cleaned[:60]
+
+
 @router.get("/blueprint/{blueprint_id}/export")
 def export_blueprint(
     blueprint_id: str,
-    format: str = "md",
+    format: str = "pdf",
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -137,4 +175,18 @@ def export_blueprint(
         return PlainTextResponse(
             json.dumps(bp.state, ensure_ascii=False, indent=2), media_type="application/json"
         )
-    return PlainTextResponse(_to_markdown(bp.state or {}), media_type="text/markdown")
+    if format == "md":
+        return PlainTextResponse(_to_markdown(bp.state or {}), media_type="text/markdown")
+
+    # PDF: formato principal de exportacion (incluye TODO el contenido del
+    # proyecto -- lienzo, BMC, hipotesis, investigacion, experimentos, test
+    # cards, plan, critico, roadmap, decisiones e informe -- ver pdf_export.py).
+    pdf_bytes = build_blueprint_pdf(
+        bp.state or {}, project_name=project.name, raw_idea=project.raw_idea
+    )
+    filename = f"blueprint-{_safe_filename(project.name)}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
