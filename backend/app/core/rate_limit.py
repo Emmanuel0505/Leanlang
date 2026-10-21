@@ -53,4 +53,37 @@ def get_real_client_ip(request: Request) -> str:
     return get_remote_address(request)
 
 
+def get_login_identity_key(request: Request) -> str:
+    """Clave por cuenta (email normalizado) para el limite de fuerza bruta de
+    login -- independiente de la IP de origen.
+
+    Un limite solo por IP (ver `get_real_client_ip`) castiga a cualquier grupo
+    de usuarios legitimos detras del mismo NAT (aula, oficina, red de un
+    evento): comparten un unico balde, asi que el intento N+1 de CUALQUIERA de
+    ellos devuelve 429, sin importar que sean cuentas distintas (hallazgo real:
+    30 alumnos en la misma red agotaban el limite de 5/min en el 6to login,
+    sin importar quien lo hiciera).
+
+    El valor real de proteccion contra fuerza bruta es "cuantos intentos puede
+    hacer alguien contra UNA cuenta", no "cuantos intentos salen de una IP" --
+    eso es lo que este key_func mide. Se combina en las rutas con un limite
+    por IP bastante mas generoso (`get_real_client_ip`), que sigue frenando
+    abuso puramente volumetrico (ej. un bot probando miles de emails al azar
+    desde una sola maquina) sin penalizar a usuarios legitimos compartiendo
+    red.
+
+    El email se lee de `request.state.login_identity`, fijado por una
+    dependencia de FastAPI (`_capture_login_identity` en auth.py) que corre
+    como parte de la resolucion de dependencias de la request -- siempre
+    antes de que slowapi evalue los limites de la ruta, sin importar el orden
+    de los parametros en la firma del endpoint. Si por algun motivo no esta
+    disponible (nunca deberia pasar en el endpoint real), cae al limite por
+    IP para no dejar la ruta sin proteccion.
+    """
+    identity = getattr(request.state, "login_identity", None)
+    if identity:
+        return f"login:{identity}"
+    return get_real_client_ip(request)
+
+
 limiter = Limiter(key_func=get_real_client_ip)
