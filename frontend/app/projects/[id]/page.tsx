@@ -456,9 +456,13 @@ function StagePanel({
             </button>
           )}
           {phase === "done" && (
-            <div className="rounded-2xl border border-viab/30 bg-viab-soft/60 p-5 text-center">
-              <p className="font-display font-semibold text-viab-ink">Blueprint aprobado y completo 🎉</p>
-              <p className="mt-1 text-sm text-viab-ink/80">Expórtalo en Markdown o JSON arriba o aquí.</p>
+            <div className="flex items-center justify-center gap-2.5 rounded-2xl border border-viab/30 bg-viab-soft/60 px-5 py-4 text-center">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-viab text-white">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+              </span>
+              <p className="font-display font-semibold text-viab-ink">Blueprint aprobado y completo</p>
             </div>
           )}
         </div>

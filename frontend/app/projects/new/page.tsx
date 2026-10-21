@@ -101,7 +101,6 @@ export default function NewProject() {
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <Segmented label="Presupuesto" value={budget} onChange={setBudget} options={[
-              { value: "very_low", label: "Muy bajo" },
               { value: "low", label: "Bajo" },
               { value: "medium", label: "Medio" },
               { value: "high", label: "Alto" },
